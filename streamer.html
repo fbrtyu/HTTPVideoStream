@@ -1,0 +1,56 @@
+<html>
+<style>
+    #videoObjectHtml5ApiServer1 {
+        width: 640px;
+        height: 360px;
+        background: #666;
+    }
+</style>
+
+<body>
+    <!-- Создание видео элементов и кнопки начала трансляции -->
+    <video autoplay id="videoObjectHtml5ApiServer1"></video>
+    <button id="b1" onclick="StartStream()">Начать</button>
+
+    <script type="text/javascript">
+
+        async function sendvideo(blob) {
+            let response = await fetch('http://127.0.0.1:8080/sendvideo', {
+                method: 'POST',
+                body: blob
+            });
+        }
+
+        //Переменные плееров
+        var video1 = document.getElementById('videoObjectHtml5ApiServer1'); //Просто превью
+
+        //webrtc. Получение данных с вебки и дублирование их в 1-ый плеер
+        function StartStream() {
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (stream) {
+                    video1.srcObject = stream;
+
+                    //Параметры качества записи с вебки
+                    var recorderOptions = {
+                        mimeType: 'video/webm; codecs=vp8',
+                        videoBitsPerSecond: 1*1024*8*1000,
+                    };
+
+                    var mediaRecorder = new MediaRecorder(stream, recorderOptions)
+
+                    mediaRecorder.ondataavailable = async function (e) {
+                        if (e.data && e.data.size > 0) {
+                            //Отправка данных на сервер каждую секунду
+                            await sendvideo(e.data);
+                        }
+                    }
+
+                    let timerId2 = setInterval(()=>{mediaRecorder.stop(); mediaRecorder.start();}, 1000);
+
+                }).catch(function (err) { console.log(err); });
+            }
+        }
+    </script>
+</body>
+
+</html>

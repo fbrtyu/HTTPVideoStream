@@ -1,0 +1,110 @@
+<html>
+<style>
+    #videoObjectHtml5ApiServer2 {
+        width: 854px;
+        height: 480px;
+        background: #666;
+    }
+</style>
+
+<body>
+    <!-- Создание видео элементов и кнопки начала трансляции -->
+    <video autoplay id="videoObjectHtml5ApiServer2"></video>
+    <button id="b1" onclick="getvideo2()">Начать</button>
+
+    <!-- <video width="500" height="400" controls="controls">
+        //Плеер для воспроизведение полного видео (записи)
+        <source src="http://localhost:8080/streams/fullvideo.txt" type='video/webm; codecs="vp8"'>
+    </video> -->
+
+    <script type="text/javascript">
+
+        //Функция для работы воспроизведени полного видео
+
+        // async function getvideo() {
+        //     let response = await fetch('http://localhost:8080/streams/fullvideo.txt', {
+        //         method: 'GET',
+        //     });
+        //     let result = await response.arrayBuffer();
+        //     if (result.length > 0 && !sourceBuffer.updating) {
+        //         sourceBuffer.appendBuffer(result);
+        //     }
+        //     sourceBuffer.appendBuffer(result);
+        // };
+
+        //Переменные плееров
+        var video2 = document.getElementById('videoObjectHtml5ApiServer2'); //Воспроизведение полученного из вебсокет видео
+
+        var sourceBuffer;
+        let response = fetch('http://localhost:8080/getvideo', { method: 'GET', });
+        var reader = new FileReader();
+
+        //Переменные для попытки синхронизировать получение видео при помощи дополнительного http запроса, 
+        //чтобы знать есть ли новые данные для меня, но пока не полностью реализовал
+        //Возможно есть способ лучше
+        //var r;
+        //let xhr = new XMLHttpRequest();
+        //xhr.open('GET', 'http://localhost:8080/getvideo');
+
+        //Создаем медиаресурс и подключаем его к плееру 2
+        var mediaSource2 = new MediaSource();
+        video2.src = URL.createObjectURL(mediaSource2);
+
+        mediaSource2.addEventListener('sourceopen', sourceOpen); //Событие открытия медиаресурса плеера 2
+
+        function sourceOpen() {
+            if (mediaSource2.sourceBuffers.length < 1) {
+                sourceBuffer = mediaSource2.addSourceBuffer('video/webm; codecs=vp8');
+            }
+
+            // sourceBuffer.addEventListener("updateend", () => {
+            //     if (mediaSource2.readyState == "open" && sourceBuffer.updating == false && r == 1) {
+            //         r = 0;
+            //         //mediaSource2.endOfStream();
+            //         video2.play();
+            //         console.log("ok");
+            //         //inf();
+            //         let timerId2 = setInterval(async () => {
+            //         if (sourceBuffer.updating == false) {
+            //             await inf();
+            //         }
+            //         }, 2000);
+            //     }
+            // });
+        };
+
+        //Функция получения новой информации видео
+        async function inf() {
+            response = await fetch('http://localhost:8080/getvideo', { method: 'GET', headers: {} });
+            // let result = await response.arrayBuffer();
+            // r = result;
+            //base64Response = await fetch(`${base64Data}`);
+            //blob = await base64Response.blob();
+            //var reader = new FileReader();
+
+            reader.onload = function (evt) {
+                sourceBuffer.appendBuffer(evt.target.result);
+                //r = 1;
+            };
+
+            reader.readAsArrayBuffer(await response.blob());
+        }
+
+        //Функция запуска видео. Каждую секунду скачивает новый кусочек. Работает, но есть подвисания
+        function getvideo2() {
+            let timerId2 = setInterval(async () => {
+                await inf();
+                if (sourceBuffer.updating == false) {
+                    await inf();
+                    mediaSource2.endOfStream();
+                    video2.play();
+                }
+
+                //xhr.send();
+            }, 1000);
+        };
+
+    </script>
+</body>
+
+</html>
