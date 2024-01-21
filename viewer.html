@@ -18,20 +18,6 @@
     </video> -->
 
     <script type="text/javascript">
-
-        //Функция для работы воспроизведени полного видео
-
-        // async function getvideo() {
-        //     let response = await fetch('http://localhost:8080/streams/fullvideo.txt', {
-        //         method: 'GET',
-        //     });
-        //     let result = await response.arrayBuffer();
-        //     if (result.length > 0 && !sourceBuffer.updating) {
-        //         sourceBuffer.appendBuffer(result);
-        //     }
-        //     sourceBuffer.appendBuffer(result);
-        // };
-
         //Переменные плееров
         var video2 = document.getElementById('videoObjectHtml5ApiServer2'); //Воспроизведение полученного из вебсокет видео
 
@@ -68,7 +54,7 @@
             //         if (sourceBuffer.updating == false) {
             //             await inf();
             //         }
-            //         }, 2000);
+            //         }, 1000);
             //     }
             // });
         };
@@ -99,9 +85,20 @@
                     mediaSource2.endOfStream();
                     video2.play();
                 }
-                
                 //xhr.send();
             }, 1000);
+        };
+
+        //Функция для работы воспроизведени полного видео
+        async function getvideo() {
+            let response = await fetch('http://localhost:8080/streams/fullvideo.txt', {
+                method: 'GET',
+            });
+            let result = await response.arrayBuffer();
+            if (result.length > 0 && !sourceBuffer.updating) {
+                await sourceBuffer.appendBuffer(result);
+            }
+            await sourceBuffer.appendBuffer(result);
         };
 
     </script>
