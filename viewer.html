@@ -77,7 +77,16 @@
             // }, 1000);
 
             let timer = setInterval(async () => {
+                var start = new Date().getTime();
+
                 await getvideochunk();
+
+                var end = new Date().getTime();
+
+                var time = end - start;
+
+                console.log('Время выполнения = ' + time);
+
             }, 1000);
         };
 
