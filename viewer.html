@@ -52,12 +52,12 @@
         async function getvideochunk() {
             response = await fetch('http://localhost:8080/getvideo', { method: 'GET' });
 
-            reader.onload = function (evt) {
-                videobuffer.push(evt.target.result);
-                sourceBuffer.appendBuffer(videobuffer.pop());
+            reader.onload = async function (evt) {
+                await videobuffer.push(evt.target.result);
+                await sourceBuffer.appendBuffer(videobuffer.pop());
             };
 
-            reader.readAsArrayBuffer(await response.blob());
+            await reader.readAsArrayBuffer(await response.blob());
         }
 
         //Функция запуска видео. Каждую секунду скачивает новый кусочек. Работает, но есть подвисания
@@ -76,7 +76,7 @@
             //     }
             // }, 1000);
 
-            let timer = setInterval(async () => {
+            let timer = await setInterval(async () => {
                 var start = new Date().getTime();
 
                 await getvideochunk();
