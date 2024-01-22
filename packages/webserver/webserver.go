@@ -77,7 +77,7 @@ func getVideo(w http.ResponseWriter, r *http.Request) {
 
 	b = body
 	//Для полной записи добавить в параметры os.O_APPEND
-	file, err := os.OpenFile("./static/streams/video.txt", os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile("./static/streams/video.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		fmt.Println("Unable to create file:", err)
 		os.Exit(1)
