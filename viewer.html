@@ -1,6 +1,6 @@
 <html>
 <style>
-    #videoObjectHtml5ApiServer2 {
+    #videoObjectHtml5ApiServer {
         width: 854px;
         height: 480px;
         background: #666;
@@ -9,96 +9,76 @@
 
 <body>
     <!-- Создание видео элементов и кнопки начала трансляции -->
-    <video autoplay id="videoObjectHtml5ApiServer2"></video>
-    <button id="b1" onclick="getvideo2()">Начать</button>
-
-    <!-- <video width="500" height="400" controls="controls">
-        //Плеер для воспроизведение полного видео (записи)
-        <source src="http://localhost:8080/streams/fullvideo.txt" type='video/webm; codecs="vp8"'>
-    </video> -->
+    <video autoplay id="videoObjectHtml5ApiServer"></video>
+    <button onclick="playvideo()">Запустить видео</button>
 
     <script type="text/javascript">
         //Переменные плееров
-        var video2 = document.getElementById('videoObjectHtml5ApiServer2'); //Воспроизведение полученного из вебсокет видео
-
+        var video = document.getElementById('videoObjectHtml5ApiServer');
         var sourceBuffer;
-        let response = fetch('http://localhost:8080/getvideo', { method: 'GET', });
+        var response;
         var reader = new FileReader();
+        var videobuffer = [];
 
-        //Переменные для попытки синхронизировать получение видео при помощи дополнительного http запроса, 
-        //чтобы знать есть ли новые данные для меня, но пока не полностью реализовал
-        //Возможно есть способ лучше
-        //var r;
-        //let xhr = new XMLHttpRequest();
-        //xhr.open('GET', 'http://localhost:8080/getvideo');
+        //Создаем медиаресурс и подключаем его к плееру
+        var mediaSource = new MediaSource();
+        video.src = URL.createObjectURL(mediaSource);
 
-        //Создаем медиаресурс и подключаем его к плееру 2
-        var mediaSource2 = new MediaSource();
-        video2.src = URL.createObjectURL(mediaSource2);
+        //Событие открытия медиаресурса плеера
+        mediaSource.addEventListener('sourceopen', sourceOpen);
 
-        mediaSource2.addEventListener('sourceopen', sourceOpen); //Событие открытия медиаресурса плеера 2
+        var countofbuffer = 1;
 
         function sourceOpen() {
-            if (mediaSource2.sourceBuffers.length < 1) {
-                sourceBuffer = mediaSource2.addSourceBuffer('video/webm; codecs=vp8');
+            //Добавление буффера (определенного типа 'video/webm; codecs=vp8') к mediaSource
+            if (countofbuffer == 1) {
+                sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs=vp8');
+                countofbuffer = 2;
             }
 
-            // sourceBuffer.addEventListener("updateend", () => {
-            //     if (mediaSource2.readyState == "open" && sourceBuffer.updating == false && r == 1) {
-            //         r = 0;
-            //         //mediaSource2.endOfStream();
-            //         video2.play();
-            //         console.log("ok");
-            //         //inf();
-            //         let timerId2 = setInterval(async () => {
-            //         if (sourceBuffer.updating == false) {
-            //             await inf();
-            //         }
-            //         }, 1000);
-            //     }
-            // });
+            //Событие окончания добавления данных в буффер
+            sourceBuffer.addEventListener("updateend", () => {
+                if (mediaSource.readyState == 'open') {
+                    mediaSource.endOfStream();
+                    video.play();
+                };
+            });
         };
 
+        let responsinfotext = "false";
+        let responseinfo;
+
         //Функция получения новой информации видео
-        async function inf() {
-            response = await fetch('http://localhost:8080/getvideo', { method: 'GET', headers: {} });
-            // let result = await response.arrayBuffer();
-            // r = result;
-            //base64Response = await fetch(`${base64Data}`);
-            //blob = await base64Response.blob();
-            //var reader = new FileReader();
+        async function getvideochunk() {
+            response = await fetch('http://localhost:8080/getvideo', { method: 'GET' });
 
             reader.onload = function (evt) {
-                sourceBuffer.appendBuffer(evt.target.result);
-                //r = 1;
+                videobuffer.push(evt.target.result);
+                sourceBuffer.appendBuffer(videobuffer.pop());
             };
 
             reader.readAsArrayBuffer(await response.blob());
         }
 
         //Функция запуска видео. Каждую секунду скачивает новый кусочек. Работает, но есть подвисания
-        function getvideo2() {
-            let timerId2 = setInterval(async () => {
-                await inf();
-                if (sourceBuffer.updating == false) {
-                    await inf();
-                    mediaSource2.endOfStream();
-                    video2.play();
-                }
-                //xhr.send();
-            }, 1000);
-        };
+        async function playvideo() {
+            // let timercheck = setInterval(async () => {
+            //     //await getvideochunk();
+            //     responseinfo = await fetch('http://localhost:8080/getinfo', { method: 'GET' })
+            //     responsinfotext = await responseinfo.text();
+            //     console.log(responsinfotext);
+            // }, 500);
 
-        //Функция для работы воспроизведени полного видео
-        async function getvideo() {
-            let response = await fetch('http://localhost:8080/streams/fullvideo.txt', {
-                method: 'GET',
-            });
-            let result = await response.arrayBuffer();
-            if (result.length > 0 && !sourceBuffer.updating) {
-                await sourceBuffer.appendBuffer(result);
-            }
-            await sourceBuffer.appendBuffer(result);
+            // let timerinfo = setInterval(async () => {
+            //     responseinfo = await fetch('http://localhost:8080/getinfo', { method: 'GET' })
+            //     if (responsinfotext != await responseinfo.text()) {
+            //         await getvideochunk();
+            //     }
+            // }, 1000);
+
+            let timer = setInterval(async () => {
+                await getvideochunk();
+            }, 1000);
         };
 
     </script>

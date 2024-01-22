@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func cors(fs http.Handler) http.HandlerFunc {
@@ -18,6 +19,7 @@ func cors(fs http.Handler) http.HandlerFunc {
 }
 
 func Webserver() {
+	//go fileinfo()
 	fileSystem := http.Dir("./static")
 
 	fileServer := http.FileServer(fileSystem)
@@ -30,6 +32,23 @@ func Webserver() {
 	http.ListenAndServe(":8080", nil)
 }
 
+var timeidet = 0
+
+func fileinfo() {
+	for {
+		f, err := os.Open("./static/streams/video.txt")
+		if err != nil {
+			panic(err)
+		}
+		fi, err := f.Stat()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(fi.ModTime().Second())
+		timeidet = fi.ModTime().Second()
+	}
+}
+
 var b []byte
 var info = false
 
@@ -37,11 +56,13 @@ func sendinfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With")
 
-	if info == true {
-		w.Write([]byte("true"))
-	} else {
-		w.Write([]byte("false"))
-	}
+	// if info == true {
+	// 	w.Write([]byte("true"))
+	// } else {
+	// 	w.Write([]byte("false"))
+	// }
+
+	w.Write([]byte(strconv.Itoa(timeidet)))
 }
 
 func getVideo(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +77,7 @@ func getVideo(w http.ResponseWriter, r *http.Request) {
 
 	b = body
 	//Для полной записи добавить в параметры os.O_APPEND
-	file, err := os.OpenFile("./static/streams/fullvideo.txt", os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile("./static/streams/video.txt", os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		fmt.Println("Unable to create file:", err)
 		os.Exit(1)
