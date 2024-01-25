@@ -1,0 +1,83 @@
+<html>
+<style>
+    #videoObjectHtml5ApiServer {
+        width: 640px;
+        height: 360px;
+        background: #666;
+    }
+</style>
+
+<body>
+    <!-- Создание видео элементов и кнопки начала трансляции -->
+    <video autoplay id="videoObjectHtml5ApiServer"></video>
+    <button onclick="StartStream()">Начать</button>
+    <button onclick="saveVideo()">Сохранить</button>
+    <script type="text/javascript">
+        //Переменные плееров
+        var video = document.getElementById('videoObjectHtml5ApiServer');
+        var chunks = []
+        async function sendvideo(blob) {
+            let response = await fetch('http://127.0.0.1:8080/sendvideo', {
+                method: 'POST',
+                body: blob,
+                mode: "no-cors"
+            });
+        }
+
+        //Получение данных с вебки и дублирование их в плеер
+        function StartStream() {
+            if (navigator.mediaDevices.getDisplayMedia) {
+                navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }).then(function (stream) {
+                    video.srcObject = stream;
+
+                    //Параметры качества записи с вебки
+                    //bits_per_second = 40000000 for 4K video,
+                    //bits_per_second = 16000000 for 2K video,
+                    //bits_per_second = 8000000 for 1080p video,
+                    //bits_per_second = 5000000 for 720p video,
+                    //bits_per_second = 2500000 for 480p video,
+                    //bits_per_second = 1000000 for 360p video
+                    var recorderOptions = {
+                        mimeType: 'video/webm; codecs=vp8',
+                        videoBitsPerSecond: 5000000,
+                    };
+
+                    var mediaRecorder = new MediaRecorder(stream, recorderOptions)
+
+                    mediaRecorder.ondataavailable = async function (e) {
+                        if (e.data && e.data.size > 0) {
+                            //Отправка данных на сервер каждую секунду
+                            var d = e.data
+                            // console.log(e.data.slice(0, e.data.size, 'video/webm; codecs=vp8'))
+                            // e.data.type = 'video/webm; codecs=vp8'
+
+                            chunks.push(e.data)
+                            await sendvideo(e.data.slice(0, e.data.size, 'video/webm; codecs=vp8'));
+                        }
+                    }
+                    mediaRecorder.start(3000)
+
+
+                    // let timer = setInterval(()=>{mediaRecorder.stop(); mediaRecorder.start();}, 3000);
+
+                }).catch(function (err) { console.log(err); });
+            }
+        }
+        function saveVideo() {
+            const anchor = document.createElement('a');
+            anchor.href = URL.createObjectURL(new Blob(chunks, {type : 'video/webm; codecs=vp8'}));
+            anchor.download = "video.webm";
+
+            // Append to the DOM
+            document.body.appendChild(anchor);
+
+            // Trigger `click` event
+            anchor.click();
+
+            // Remove element from DOM
+            document.body.removeChild(anchor);
+        }
+    </script>
+</body>
+
+</html>
