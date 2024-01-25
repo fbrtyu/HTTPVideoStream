@@ -11,7 +11,7 @@
     <!-- Создание видео элементов и кнопки начала трансляции -->
     <video autoplay id="videoObjectHtml5ApiServer"></video>
     <button onclick="playvideo()">Запустить видео</button>
-
+    <button onclick="stopvideo()">Остановить видео</button>
     <script type="text/javascript">
         //Переменные плееров
         var video = document.getElementById('videoObjectHtml5ApiServer');
@@ -19,6 +19,7 @@
         var response;
         var reader = new FileReader();
         var videobuffer = [];
+        var tempBuf = [];
 
         //Создаем медиаресурс и подключаем его к плееру
         var mediaSource = new MediaSource();
@@ -39,7 +40,7 @@
             //Событие окончания добавления данных в буффер
             sourceBuffer.addEventListener("updateend", () => {
                 if (mediaSource.readyState == 'open') {
-                    mediaSource.endOfStream();
+                    // mediaSource.endOfStream();
                     video.play();
                 };
             });
@@ -53,11 +54,19 @@
             response = await fetch('http://localhost:8080/getvideo', { method: 'GET' });
 
             reader.onload = async function (evt) {
-                await videobuffer.push(evt.target.result);
-                await sourceBuffer.appendBuffer(videobuffer.pop());
+                await tempBuf.push(evt.target.result);
+                await sourceBuffer.appendBuffer(tempBuf.pop());
             };
 
-            await reader.readAsArrayBuffer(await response.blob());
+          
+            var buf = await response.arrayBuffer
+            var d = await response.blob()
+            await reader.readAsArrayBuffer(d.slice(0, d.size, 'video/webm'));
+            // await sourceBuffer.appendBuffer(buf);
+            videobuffer.push(d.slice(0, d.size, 'video/webm'))
+            console.log(d.slice(0, d.size, 'video/webm'))
+
+            // videobuffer.push(await response.body)
         }
 
         //Функция запуска видео. Каждую секунду скачивает новый кусочек. Работает, но есть подвисания
@@ -87,8 +96,22 @@
 
                 console.log('Время выполнения = ' + time);
 
-            }, 5000);
+            }, 3000);
         };
+        function stopvideo() {
+            const anchor = document.createElement('a');
+            anchor.href = URL.createObjectURL(new Blob(videobuffer, {type : 'video/webm; codecs=vp8'}));
+            anchor.download = "video.webm";
+
+            // Append to the DOM
+            document.body.appendChild(anchor);
+
+            // Trigger `click` event
+            anchor.click();
+
+            // Remove element from DOM
+            document.body.removeChild(anchor);
+        }
 
     </script>
 </body>
