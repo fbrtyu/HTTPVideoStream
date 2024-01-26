@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 )
 
 func cors(fs http.Handler) http.HandlerFunc {
@@ -19,51 +18,22 @@ func cors(fs http.Handler) http.HandlerFunc {
 }
 
 func Webserver() {
-	//go fileinfo()
 	fileSystem := http.Dir("./static")
-
 	fileServer := http.FileServer(fileSystem)
 
 	http.Handle("/", cors(fileServer))
 	http.HandleFunc("/sendvideo", getVideo)
 	http.HandleFunc("/getvideo", broadcastVideo)
-	http.HandleFunc("/getinfo", sendinfo)
 	fmt.Println("Server start on port: 8080")
 	http.ListenAndServe(":8080", nil)
 }
 
-var timeidet = 0
-
-func fileinfo() {
-	for {
-		f, err := os.Open("./static/streams/video.txt")
-		if err != nil {
-			panic(err)
-		}
-		fi, err := f.Stat()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(fi.ModTime().Second())
-		timeidet = fi.ModTime().Second()
-	}
-}
-
 var b []byte
-var info = false
+var firstchunck []byte
+var flag = false //Чтобы один раз записать первый чанк
+var flag2 = true //Чтобы один раз отправить первый чанк, а дальше уже самый новый отправлять
 
-func sendinfo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With")
-
-	// if info == true {
-	// 	w.Write([]byte("true"))
-	// } else {
-	// 	w.Write([]byte("false"))
-	// }
-
-	w.Write([]byte(strconv.Itoa(timeidet)))
-}
+//Но в этих флагах есть проблема, что если перезапустить стрим без перезапуска сервера, то чанки не будут друг с другом работать так как они будут из разных видео
 
 func getVideo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -76,6 +46,12 @@ func getVideo(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	b = body
+
+	if flag == false {
+		firstchunck = body
+		flag = true
+	}
+
 	//Для полной записи добавить в параметры os.O_APPEND
 	file, err := os.OpenFile("./static/streams/video.txt", os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
@@ -91,7 +67,12 @@ func getVideo(w http.ResponseWriter, r *http.Request) {
 
 func broadcastVideo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Content-Length")
 
-	w.Write(b)
+	if flag2 == true {
+		w.Write(firstchunck)
+		flag2 = false
+	} else {
+		w.Write(b)
+	}
 }

@@ -9,9 +9,10 @@
 
 <body>
     <!-- Создание видео элементов и кнопки начала трансляции -->
-    <video autoplay id="videoObjectHtml5ApiServer"></video>
+    <video id="videoObjectHtml5ApiServer"></video>
     <button onclick="playvideo()">Запустить видео</button>
-    <button onclick="stopvideo()">Остановить видео</button>
+    <button onclick="stopvideo()">Остановить видео и скачать</button>
+
     <script type="text/javascript">
         //Переменные плееров
         var video = document.getElementById('videoObjectHtml5ApiServer');
@@ -29,62 +30,58 @@
         mediaSource.addEventListener('sourceopen', sourceOpen);
 
         var countofbuffer = 1;
+        var count = 0;
+        var ListMediaSourceBuffers;
 
         function sourceOpen() {
             //Добавление буффера (определенного типа 'video/webm; codecs=vp8') к mediaSource
             if (countofbuffer == 1) {
                 sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs=vp8');
                 countofbuffer = 2;
-            }
+            };
 
-            //Событие окончания добавления данных в буффер
-            sourceBuffer.addEventListener("updateend", () => {
-                if (mediaSource.readyState == 'open') {
-                    // mediaSource.endOfStream();
+            //Событие окончания добавления данных в буффер. И без этого работает.
+            sourceBuffer.addEventListener("updateend", async () => {
+                // if (mediaSource.readyState == 'open') {
+                //     mediaSource.endOfStream();
+                //     video.play();
+                // };
+
+                //Логика для работы при воспроизведения не сразу, НО если воспроизвести через 10 чанков, то ломается
+                if(count < 2) {
+                    console.log("count < 2");
+                } else if(count == 2) {
+                    video.currentTime = 4; //Можно поиграться с этим параметром, но при 2 чаще стабильнее работает, но только если пропустить менее 10 чанков
+                                          //Будто сюда надо писать +-точное время следующего нового кадра. Получаеться его с сервера. Короче какая тут цифра, столько можно +- пропустить
                     video.play();
                 };
+
+                console.log("updateend - " + count);
             });
         };
-
-        let responsinfotext = "false";
-        let responseinfo;
 
         //Функция получения новой информации видео
         async function getvideochunk() {
             response = await fetch('http://localhost:8080/getvideo', { method: 'GET' });
+            console.log(response.headers);
 
             reader.onload = async function (evt) {
-                await tempBuf.push(evt.target.result);
-                await sourceBuffer.appendBuffer(tempBuf.pop());
+                //await tempBuf.push(evt.target.result);
+                //await sourceBuffer.appendBuffer(tempBuf.pop());
+
+                await sourceBuffer.appendBuffer(evt.target.result); //Так тоже работает, но мб буффер в будущем будет нужен
+                count++; //Считчик для знания какой это по счёту чанк
             };
 
-          
-            var buf = await response.arrayBuffer
-            var d = await response.blob()
+            var buf = await response.arrayBuffer;
+            var d = await response.blob();
             await reader.readAsArrayBuffer(d.slice(0, d.size, 'video/webm'));
-            // await sourceBuffer.appendBuffer(buf);
-            videobuffer.push(d.slice(0, d.size, 'video/webm'))
-            console.log(d.slice(0, d.size, 'video/webm'))
-
-            // videobuffer.push(await response.body)
+            videobuffer.push(d.slice(0, d.size, 'video/webm'));
+            console.log(d.slice(0, d.size, 'video/webm'));
         }
 
-        //Функция запуска видео. Каждую секунду скачивает новый кусочек. Работает, но есть подвисания
+        //Функция запуска видео. Каждые 3 сек скачивает новый кусочек
         async function playvideo() {
-            // let timercheck = setInterval(async () => {
-            //     //await getvideochunk();
-            //     responseinfo = await fetch('http://localhost:8080/getinfo', { method: 'GET' })
-            //     responsinfotext = await responseinfo.text();
-            //     console.log(responsinfotext);
-            // }, 500);
-
-            // let timerinfo = setInterval(async () => {
-            //     responseinfo = await fetch('http://localhost:8080/getinfo', { method: 'GET' })
-            //     if (responsinfotext != await responseinfo.text()) {
-            //         await getvideochunk();
-            //     }
-            // }, 1000);
-
             let timer = await setInterval(async () => {
                 var start = new Date().getTime();
 
@@ -96,8 +93,9 @@
 
                 console.log('Время выполнения = ' + time);
 
-            }, 3000);
+            }, 1000);
         };
+
         function stopvideo() {
             const anchor = document.createElement('a');
             anchor.href = URL.createObjectURL(new Blob(videobuffer, {type : 'video/webm; codecs=vp8'}));
@@ -111,7 +109,7 @@
 
             // Remove element from DOM
             document.body.removeChild(anchor);
-        }
+        };
 
     </script>
 </body>
