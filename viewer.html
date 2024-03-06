@@ -1,19 +1,43 @@
 <html>
+<link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
 <style>
     #videoObjectHtml5ApiServer {
         width: 854px;
         height: 480px;
         background: #666;
     }
+
+    /* #videoObjectHtml5ApiServerFull {
+        width: 854px;
+        height: 480px;
+        background: #666;
+    } */
 </style>
 
 <body>
     <!-- Создание видео элементов и кнопки начала трансляции -->
     <video id="videoObjectHtml5ApiServer"></video>
+
+    <!-- Плеер для просмотра записанного стрима -->
+    <!-- <video id="my-video" class="video-js" controls preload="auto" width="640" height="264" poster="MY_VIDEO_POSTER.jpg"
+        data-setup="{}">
+        <source src="http://localhost:8080/streams/video.txt" type="video/webm" />
+        <p class="vjs-no-js">
+            To view this video please enable JavaScript, and consider upgrading to a
+            web browser that
+            <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+        </p>
+    </video> -->
+
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
     <button onclick="playvideo()">Запустить видео</button>
     <button onclick="stopvideo()">Остановить видео и скачать</button>
 
     <script type="text/javascript">
+        // let a = document.getElementById('my-video');
+        // a.currentTime = 5;
+        // a.play();
         //Переменные плееров
         var video = document.getElementById('videoObjectHtml5ApiServer');
         var sourceBuffer;
@@ -48,11 +72,11 @@
                 // };
 
                 //Логика для работы при воспроизведения не сразу, НО если воспроизвести через 10 чанков, то ломается
-                if(count < 2) {
+                if (count < 2) {
                     console.log("count < 2");
-                } else if(count == 2) {
-                    video.currentTime = 4; //Можно поиграться с этим параметром, но при 2 чаще стабильнее работает, но только если пропустить менее 10 чанков
-                                          //Будто сюда надо писать +-точное время следующего нового кадра. Получаеться его с сервера. Короче какая тут цифра, столько можно +- пропустить
+                } else if (count == 2) {
+                    video.currentTime = 2; //Можно поиграться с этим параметром, но при 2 чаще стабильнее работает, но только если пропустить менее 10 чанков
+                    //Будто сюда надо писать +-точное время следующего нового кадра. Получаеться его с сервера. Короче какая тут цифра, столько можно +- пропустить
                     video.play();
                 };
 
@@ -98,7 +122,7 @@
 
         function stopvideo() {
             const anchor = document.createElement('a');
-            anchor.href = URL.createObjectURL(new Blob(videobuffer, {type : 'video/webm; codecs=vp8'}));
+            anchor.href = URL.createObjectURL(new Blob(videobuffer, { type: 'video/webm; codecs=vp8' }));
             anchor.download = "video.webm";
 
             // Append to the DOM
