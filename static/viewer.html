@@ -1,0 +1,141 @@
+<html>
+<link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+<style>
+    #videoObjectHtml5ApiServer {
+        width: 854px;
+        height: 480px;
+        background: #666;
+    }
+
+    /* #videoObjectHtml5ApiServerFull {
+        width: 854px;
+        height: 480px;
+        background: #666;
+    } */
+</style>
+
+<body>
+    <!-- Создание видео элементов и кнопки начала трансляции -->
+    <video id="videoObjectHtml5ApiServer"></video>
+
+    <!-- Плеер для просмотра записанного стрима -->
+    <!-- <video id="my-video" class="video-js" controls preload="auto" width="640" height="264" poster="MY_VIDEO_POSTER.jpg"
+        data-setup="{}">
+        <source src="http://localhost:8080/streams/video.txt" type="video/webm" />
+        <p class="vjs-no-js">
+            To view this video please enable JavaScript, and consider upgrading to a
+            web browser that
+            <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+        </p>
+    </video> -->
+
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+    <button onclick="playvideo()">Запустить видео</button>
+    <button onclick="stopvideo()">Остановить видео и скачать</button>
+
+    <script type="text/javascript">
+        // let a = document.getElementById('my-video');
+        // a.currentTime = 5;
+        // a.play();
+        //Переменные плееров
+        var video = document.getElementById('videoObjectHtml5ApiServer');
+        var sourceBuffer;
+        var response;
+        var reader = new FileReader();
+        var videobuffer = [];
+        var tempBuf = [];
+
+        //Создаем медиаресурс и подключаем его к плееру
+        var mediaSource = new MediaSource();
+        video.src = URL.createObjectURL(mediaSource);
+
+        //Событие открытия медиаресурса плеера
+        mediaSource.addEventListener('sourceopen', sourceOpen);
+
+        var countofbuffer = 1;
+        var count = 0;
+        var ListMediaSourceBuffers;
+
+        function sourceOpen() {
+            //Добавление буффера (определенного типа 'video/webm; codecs=vp8') к mediaSource
+            if (countofbuffer == 1) {
+                sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs=vp8');
+                countofbuffer = 2;
+            };
+
+            //Событие окончания добавления данных в буффер. И без этого работает.
+            sourceBuffer.addEventListener("updateend", async () => {
+                // if (mediaSource.readyState == 'open') {
+                //     mediaSource.endOfStream();
+                //     video.play();
+                // };
+
+                //Логика для работы при воспроизведения не сразу, НО если воспроизвести через 10 чанков, то ломается
+                if (count < 2) {
+                    console.log("count < 2");
+                } else if (count == 2) {
+                    video.currentTime = 2; //Можно поиграться с этим параметром, но при 2 чаще стабильнее работает, но только если пропустить менее 10 чанков
+                    //Будто сюда надо писать +-точное время следующего нового кадра. Получаеться его с сервера. Короче какая тут цифра, столько можно +- пропустить
+                    video.play();
+                };
+
+                console.log("updateend - " + count);
+            });
+        };
+
+        //Функция получения новой информации видео
+        async function getvideochunk() {
+            response = await fetch('http://localhost:8080/getvideo', { method: 'GET' });
+            console.log(response.headers);
+
+            reader.onload = async function (evt) {
+                //await tempBuf.push(evt.target.result);
+                //await sourceBuffer.appendBuffer(tempBuf.pop());
+
+                await sourceBuffer.appendBuffer(evt.target.result); //Так тоже работает, но мб буффер в будущем будет нужен
+                count++; //Считчик для знания какой это по счёту чанк
+            };
+
+            var buf = await response.arrayBuffer;
+            var d = await response.blob();
+            await reader.readAsArrayBuffer(d.slice(0, d.size, 'video/webm'));
+            videobuffer.push(d.slice(0, d.size, 'video/webm'));
+            console.log(d.slice(0, d.size, 'video/webm'));
+        }
+
+        //Функция запуска видео. Каждые 3 сек скачивает новый кусочек
+        async function playvideo() {
+            let timer = await setInterval(async () => {
+                var start = new Date().getTime();
+
+                await getvideochunk();
+
+                var end = new Date().getTime();
+
+                var time = end - start;
+
+                console.log('Время выполнения = ' + time);
+
+            }, 1000);
+        };
+
+        function stopvideo() {
+            const anchor = document.createElement('a');
+            anchor.href = URL.createObjectURL(new Blob(videobuffer, { type: 'video/webm; codecs=vp8' }));
+            anchor.download = "video.webm";
+
+            // Append to the DOM
+            document.body.appendChild(anchor);
+
+            // Trigger `click` event
+            anchor.click();
+
+            // Remove element from DOM
+            document.body.removeChild(anchor);
+        };
+
+    </script>
+</body>
+
+</html>
